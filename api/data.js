@@ -31,7 +31,7 @@ export default async function handler(req, res) {
         return res.status(200).json(dataArray);
 
     } catch (error) {
-        console.error('Error in /api/data:', error);
+        console.error('Error in /api/data:', error.message);
         return res.status(500).json({ message: 'Internal Server Error' });
     }
 }

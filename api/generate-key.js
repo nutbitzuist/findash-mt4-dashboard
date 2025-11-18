@@ -15,12 +15,12 @@ export default async function handler(req, res) {
     try {
         const newApiKey = `sk_${randomUUID().replace(/-/g, '')}`;
 
-        // Store the new key in Vercel KV, overwriting any previous key.
+        // Store the new key in Vercel KV (powered by Upstash), overwriting any previous key.
         await kv.set('api_key', newApiKey);
 
         return res.status(200).json({ apiKey: newApiKey });
     } catch (error) {
-        console.error('Error in /api/generate-key:', error);
+        console.error('Error in /api/generate-key:', error.message);
         return res.status(500).json({ message: 'Internal Server Error.' });
     }
 }

@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "My MT4 Dashboard",
   "dependencies": {
-    "@vercel/kv": "^1.0.1"
+    "@vercel/kv": "^1.0.1",
+    "redis": "^5.9.0"
   }
 }
