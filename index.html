@@ -140,14 +140,13 @@
             </div>
             <p class="text-gray-600 mb-4">
                 To connect your MT4 EAs, use the following settings.
-                <strong class="text-red-600">This is a prototype and not yet functional.</strong>
             </p>
             
             <div class="mb-4">
                 <label class_="block text-sm font-medium text-gray-700 mb-1">Your Server URL</label>
-                <div class="api-key-box">https://your-backend-api.com/v1/update</div>
+                <div id="serverUrlDisplay" class="api-key-box">(Will be shown here)</div>
                 <p class="text-xs text-gray-500 mt-1">
-                    Enter this into the `ServerURL` input in your EA. This requires you to build and host your own backend.
+                    Enter this into the `ServerURL` input in your EA.
                 </p>
             </div>
 
@@ -176,6 +175,7 @@
         // This is the (hypothetical) URL of your backend server.
         // We change this to a relative path, so it works perfectly on Vercel.
         const API_GET_URL = "/api/data";
+        const API_GENERATE_KEY_URL = "/api/generate-key"; // New endpoint
 
         /**
          * Fetches LIVE data from your custom backend API.
@@ -185,43 +185,17 @@
         async function fetchAccountData() {
             console.log("Fetching live data from API...");
             
-            // In a real app, you would add your auth token here
-            // const headers = {
-            //     'Authorization': 'Bearer YOUR_DASHBOARD_AUTH_TOKEN'
-            // };
-            
             try {
-                // const response = await fetch(API_GET_URL); // No headers needed if using Vercel Password Protection
-                
-                // --- MOCKING a successful API call FOR THIS DEMO ---
-                // We'll simulate a 1.5 second delay
-                // I have RE-ENABLED this block to fix the preview error.
-                // The fetch() call above will only work AFTER deploying to Vercel.
-                await new Promise(resolve => setTimeout(resolve, 1500));
-                
-                // This is what your API would return from its database
-                const liveDataFromDatabase = [
-                    { id: 12345, name: "Main Account (USD)", balance: 25480.50, equity: 26120.75, pl: 640.25, currency: 'USD', daily_pl: 150.10, daily_pl_percent: 0.58 },
-                    { id: 67890, name: "EUD/USD Bot (EUR)", balance: 10200.00, equity: 9950.00, pl: -250.00, currency: 'EUR', daily_pl: -80.20, daily_pl_percent: -0.80 },
-                    // ... other 6 accounts
-                ];
-                console.log("Live data received (simulated).");
-                return liveDataFromDatabase;
-                
-                // --- END OF MOCK ---
-
-                
-                // --- THIS IS THE REAL CODE YOU WOULD USE ---
-                // I have COMMENTED OUT this block to fix the preview error.
-                /*
+                const response = await fetch(API_GET_URL);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const data = await response.json();
                 console.log("Live data received:", data);
+                if (data.length === 0) {
+                     console.log("API returned no accounts. Is your EA running and configured?");
+                }
                 return data; // The API returns the array directly
-                */
-                
 
             } catch (error) {
                 console.error("Failed to fetch account data:", error);
@@ -229,9 +203,7 @@
                 // Removed alert() as requested
                 console.error("Could not connect to the API. Displaying stale/mock data. (Error: " + error.message + ")");
                 return [
-                    { id: 12345, name: "Main Account (USD)", balance: 25480.50, equity: 26120.75, pl: 640.25, currency: 'USD', daily_pl: 150.10, daily_pl_percent: 0.58 },
-                    { id: 67890, name: "EUD/USD Bot (EUR)", balance: 10200.00, equity: 9950.00, pl: -250.00, currency: 'EUR', daily_pl: -80.20, daily_pl_percent: -0.80 },
-                    { id: 11223, name: "Gold Scalper (USD)", balance: 5100.30, equity: 5100.30, pl: 0.00, currency: 'USD', daily_pl: 0.00, daily_pl_percent: 0.00 },
+                    { id: 99999, name: "Example Account (Error)", balance: 1000, equity: 1000, pl: 0, currency: 'USD', daily_pl: 0, daily_pl_percent: 0.00 },
                 ];
             }
         }
@@ -360,16 +332,33 @@
             const closeButton2 = document.getElementById('closeModalButton2');
             const genButton = document.getElementById('generateKeyButton');
             const keyDisplay = document.getElementById('apiKeyDisplay');
+            const serverUrlDisplay = document.getElementById('serverUrlDisplay');
             
-            openButton.onclick = () => modal.classList.add('show');
+            openButton.onclick = () => {
+                // Set the server URL dynamically based on the current window location
+                serverUrlDisplay.textContent = `${window.location.origin}/api/update`;
+                modal.classList.add('show');
+            };
+
             closeButton.onclick = () => modal.classList.remove('show');
             closeButton2.onclick = () => modal.classList.remove('show');
             
-            genButton.onclick = () => {
-                // This generates a secure random key.
-                // In a real app, you would save this to your user's
-                // profile in your backend database.
-                keyDisplay.textContent = "secret_key_" + crypto.randomUUID();
+            genButton.onclick = async () => {
+                keyDisplay.textContent = 'Generating...';
+                genButton.disabled = true;
+                try {
+                    const response = await fetch('/api/generate-key', { method: 'POST' });
+                    if (!response.ok) {
+                        throw new Error('Failed to generate key on server.');
+                    }
+                    const { apiKey } = await response.json();
+                    keyDisplay.textContent = apiKey;
+                } catch (error) {
+                    console.error("API Key Generation Error:", error);
+                    keyDisplay.textContent = 'Error generating key. Check console.';
+                } finally {
+                    genButton.disabled = false;
+                }
             };
             
             modal.onclick = (e) => {
@@ -393,6 +382,10 @@
                 
                 // 2. Populate individual account cards
                 gridEl.innerHTML = ''; // Clear any existing
+                if (accounts.length === 0) {
+                    gridEl.innerHTML = `<div class="col-span-full text-center text-gray-500 p-8 card">No account data received yet. Please configure your MT4 EA with the API Key and Server URL.</div>`;
+                }
+
                 accounts.forEach(account => {
                     gridEl.innerHTML += createAccountCard(account);
                 });
