@@ -1,0 +1,28 @@
+{
+  "name": "mt4-dashboard",
+  "version": "1.0.0",
+  "description": "My MT4 Dashboard",
+  "dependencies": {
+    "@vercel/kv": "^1.0.1"
+  }
+}
+```
+
+---
+
+### Step 2: Push to GitHub
+
+Now, let's get this folder onto GitHub.
+
+1.  Go to [GitHub.com](https://github.com) and create a **new, empty repository**. Don't add a README or .gitignore.
+2.  Open your command line or terminal.
+3.  Navigate into your `mt4-dashboard` folder:
+    `cd path/to/mt4-dashboard`
+4.  Run these git commands, one by one, replacing the GitHub URL with your own:
+
+    ```bash
+    git init
+    git add .
+    git commit -m "Initial dashboard commit"
+    git remote add origin https://github.com/your-username/your-repo-name.git
+    git push -u origin main

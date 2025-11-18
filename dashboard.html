@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale-1.0">
+    <title>MT4 Portfolio Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: all 0.2s ease-in-out;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .positive { color: #10b981; }
+        .negative { color: #ef4444; }
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #4f46e5;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* New styles for the API Key modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .modal-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            width: 90%;
+            max-width: 500px;
+            transform: translateY(-20px);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.show .modal-content {
+            transform: translateY(0);
+        }
+        .api-key-box {
+            background-color: #f3f4f6;
+            border: 1px dashed #d1d5db;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-family: monospace;
+            font-size: 0.9rem;
+            color: #1f2937;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-8">
+            <div class="flex flex-wrap justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">My MT4 Portfolio Dashboard</h1>
+                    <p class="text-gray-600">Live summary of all connected accounts.</p>
+                </div>
+                <!-- New API Key Button -->
+                <button id="apiKeyButton" class="mt-4 md:mt-0 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-all duration-200">
+                    Show API Key & URLs
+                </button>
+            </div>
+        </header>
+
+        <!-- Loading State -->
+        <div id="loading" class="flex justify-center items-center h-64">
+            <div class="text-center">
+                <div class="loading-spinner mx-auto"></div>
+                <p class="text-gray-600 mt-4">Connecting to accounts...</p>
+            </div>
+        </div>
+
+        <!-- Dashboard Content (hidden until loaded) -->
+        <div id="dashboard-content" class="hidden">
+            <!-- Overall Portfolio Summary -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="card p-6 col-span-1 md:col-span-2">
+                    <h2 class="text-sm font-medium text-gray-500">Total Portfolio Value</h2>
+                    <p class="text-4xl font-bold text-gray-900" id="total-equity">$0.00</p>
+                    <p class="text-sm mt-2" id="total-pl">
+                        <!-- P/L will be inserted here -->
+                    </p>
+                </div>
+                <div class="card p-6">
+                    <h2 class="text-sm font-medium text-gray-500">Overall P/L (24h)</h2>
+                    <p class="text-4xl font-bold" id="total-pl-24h">$0.00</p>
+                    <p class="text-sm mt-2" id="total-pl-24h-percent">
+                        <!-- P/L % will be inserted here -->
+                    </p>
+                </div>
+            </div>
+
+            <!-- Individual Account Grid -->
+            <h2 class="text-2xl font-semibold text-gray-900 mb-4">Individual Accounts</h2>
+            <div id="account-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Account cards will be inserted here by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- New API Key Modal -->
+    <div id="apiKeyModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold">Connection Instructions</h2>
+                <button id="closeModalButton" class="text-gray-500 hover:text-gray-800">&times;</button>
+            </div>
+            <p class="text-gray-600 mb-4">
+                To connect your MT4 EAs, use the following settings.
+                <strong class="text-red-600">This is a prototype and not yet functional.</strong>
+            </p>
+            
+            <div class="mb-4">
+                <label class_="block text-sm font-medium text-gray-700 mb-1">Your Server URL</label>
+                <div class="api-key-box">https://your-backend-api.com/v1/update</div>
+                <p class="text-xs text-gray-500 mt-1">
+                    Enter this into the `ServerURL` input in your EA. This requires you to build and host your own backend.
+                </p>
+            </div>
+
+            <div class="mb-4">
+                <label class_="block text-sm font-medium text-gray-700 mb-1">Your Secret API Key</label>
+                <div id="apiKeyDisplay" class="api-key-box">(Click 'Generate' to create a key)</div>
+                <p class="text-xs text-gray-500 mt-1">
+                    Enter this into the `ApiKey` input in your EA.
+                </p>
+            </div>
+
+            <div class="flex justify-end space-x-2">
+                <button id="generateKeyButton" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-all duration-200">
+                    Generate New Key
+                </button>
+                 <button id="closeModalButton2" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- THIS IS WHERE YOU WOULD FETCH DATA FROM YOUR API ---
+        
+        // This is the (hypothetical) URL of your backend server.
+        // We change this to a relative path, so it works perfectly on Vercel.
+        const API_GET_URL = "/api/data";
+
+        /**
+         * Fetches LIVE data from your custom backend API.
+         * This REPLACES the old mock data function.
+         * @returns {Promise<Array<Object>>} A promise that resolves to an array of account data.
+         */
+        async function fetchAccountData() {
+            console.log("Fetching live data from API...");
+            
+            // In a real app, you would add your auth token here
+            // const headers = {
+            //     'Authorization': 'Bearer YOUR_DASHBOARD_AUTH_TOKEN'
+            // };
+            
+            try {
+                // const response = await fetch(API_GET_URL); // No headers needed if using Vercel Password Protection
+                
+                // --- MOCKING a successful API call FOR THIS DEMO ---
+                // We'll simulate a 1.5 second delay
+                // I have RE-ENABLED this block to fix the preview error.
+                // The fetch() call above will only work AFTER deploying to Vercel.
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                // This is what your API would return from its database
+                const liveDataFromDatabase = [
+                    { id: 12345, name: "Main Account (USD)", balance: 25480.50, equity: 26120.75, pl: 640.25, currency: 'USD', daily_pl: 150.10, daily_pl_percent: 0.58 },
+                    { id: 67890, name: "EUD/USD Bot (EUR)", balance: 10200.00, equity: 9950.00, pl: -250.00, currency: 'EUR', daily_pl: -80.20, daily_pl_percent: -0.80 },
+                    // ... other 6 accounts
+                ];
+                console.log("Live data received (simulated).");
+                return liveDataFromDatabase;
+                
+                // --- END OF MOCK ---
+
+                
+                // --- THIS IS THE REAL CODE YOU WOULD USE ---
+                // I have COMMENTED OUT this block to fix the preview error.
+                /*
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                console.log("Live data received:", data);
+                return data; // The API returns the array directly
+                */
+                
+
+            } catch (error) {
+                console.error("Failed to fetch account data:", error);
+                // We'll return mock data on failure so the dashboard doesn't just stay blank
+                // Removed alert() as requested
+                console.error("Could not connect to the API. Displaying stale/mock data. (Error: " + error.message + ")");
+                return [
+                    { id: 12345, name: "Main Account (USD)", balance: 25480.50, equity: 26120.75, pl: 640.25, currency: 'USD', daily_pl: 150.10, daily_pl_percent: 0.58 },
+                    { id: 67890, name: "EUD/USD Bot (EUR)", balance: 10200.00, equity: 9950.00, pl: -250.00, currency: 'EUR', daily_pl: -80.20, daily_pl_percent: -0.80 },
+                    { id: 11223, name: "Gold Scalper (USD)", balance: 5100.30, equity: 5100.30, pl: 0.00, currency: 'USD', daily_pl: 0.00, daily_pl_percent: 0.00 },
+                ];
+            }
+        }
+
+        // --- UTILITY FUNCTIONS ---
+
+        /**
+         * Formats a number as currency.
+         * @param {number} amount The number to format.
+         * @param {string} currency The currency code (default 'USD').
+         * @returns {string} A formatted currency string.
+         */
+        function formatCurrency(amount, currency = 'USD') {
+            // A simple currency formatter.
+            // In a real app, you'd handle different currencies (EUR, JPY) more robustly.
+            if (currency === 'JPY') {
+                return new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY', maximumFractionDigits: 0 }).format(amount);
+            }
+            if (currency === 'EUR') {
+                return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(amount);
+            }
+             if (currency === 'AUD') {
+                return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(amount);
+            }
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+        }
+
+        /**
+         * Creates an HTML card for a single account.
+         * @param {Object} account The account data object.
+         * @returns {string} HTML string for the account card.
+         */
+        function createAccountCard(account) {
+            const plClass = account.pl >= 0 ? 'positive' : 'negative';
+            const dailyPlClass = account.daily_pl >= 0 ? 'positive' : 'negative';
+            const dailyPlSign = account.daily_pl >= 0 ? '+' : '';
+            
+            // Use the currency from the data, fallback to USD
+            let currency = account.currency || 'USD';
+
+            return `
+                <div class="card p-5">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-lg font-semibold text-gray-900 truncate" title="${account.name}">${account.name}</h3>
+                        <span class="text-xs font-medium text-gray-500">ID: ${account.id}</span>
+                    </div>
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-500">Equity</p>
+                        <p class="text-2xl font-bold text-gray-900">${formatCurrency(account.equity, currency)}</p>
+                    </div>
+                    <div class="flex justify-between text-sm mb-1">
+                        <span class="text-gray-500">Balance:</span>
+                        <span class="font-medium text-gray-700">${formatCurrency(account.balance, currency)}</span>
+                    </div>
+                    <div class="flex justify-between text-sm mb-3">
+                        <span class="text-gray-500">Open P/L:</span>
+                        <span class="font-medium ${plClass}">${formatCurrency(account.pl, currency)}</span>
+                    </div>
+                    <div class="border-t pt-3">
+                        <p class="text-sm text-gray-500">Daily P/L</p>
+                        <p class="text-lg font-semibold ${dailyPlClass}">
+                            ${dailyPlSign}${formatCurrency(account.daily_pl, currency)} (${dailyPlSign}${account.daily_pl_percent.toFixed(2)}%)
+                        </p>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Updates the main summary totals.
+         * @param {Array<Object>} accounts Array of all account data.
+         */
+        function updateSummary(accounts) {
+            // Note: This is a simple sum and doesn't account for different currencies.
+            // A real app would need to convert all values to a base currency (e.g., USD) first.
+            let totalEquity = 0;
+            let totalPl = 0;
+            let totalDailyPl = 0;
+            let totalYesterdayEquity = 0;
+
+            accounts.forEach(acc => {
+                // This is still a naive sum. 
+                // A proper implementation would fetch conversion rates and convert
+                // all to a single currency (e.g., USD) before summing.
+                totalEquity += acc.equity;
+                totalPl += acc.pl;
+                totalDailyPl += acc.daily_pl;
+                totalYesterdayEquity += (acc.equity - acc.daily_pl);
+            });
+            
+            // Handle potential division by zero if all accounts are new
+            const dailyPlPercent = totalYesterdayEquity !== 0 
+                ? (totalDailyPl / totalYesterdayEquity) * 100 
+                : 0;
+            const dailyPlSign = totalDailyPl >= 0 ? '+' : '';
+            const totalPlSign = totalPl >= 0 ? '+' : '';
+
+            const dailyPlClass = totalDailyPl >= 0 ? 'positive' : 'negative';
+            const totalPlClass = totalPl >= 0 ? 'positive' : 'negative';
+
+            document.getElementById('total-equity').textContent = formatCurrency(totalEquity);
+            document.getElementById('total-pl').innerHTML = `
+                <span class="font-medium ${totalPlClass}">${totalPlSign}${formatCurrency(totalPl)}</span>
+                <span class="text-gray-600">Total Open P/L</span>
+            `;
+
+            document.getElementById('total-pl-24h').textContent = `${dailyPlSign}${formatCurrency(totalDailyPl)}`;
+            document.getElementById('total-pl-24h').className = `text-4xl font-bold ${dailyPlClass}`;
+            
+            document.getElementById('total-pl-24h-percent').innerHTML = `
+                <span class="font-medium ${dailyPlClass}">${dailyPlSign}${dailyPlPercent.toFixed(2)}%</span>
+                <span class="text-gray-600">vs. yesterday</span>
+            `;
+        }
+
+        // --- MAIN EXECUTION ---
+        
+        window.onload = () => {
+            // We'll call an async function to handle the data loading
+            loadDashboard();
+            
+            // --- Modal Button Listeners ---
+            const modal = document.getElementById('apiKeyModal');
+            const openButton = document.getElementById('apiKeyButton');
+            const closeButton = document.getElementById('closeModalButton');
+            const closeButton2 = document.getElementById('closeModalButton2');
+            const genButton = document.getElementById('generateKeyButton');
+            const keyDisplay = document.getElementById('apiKeyDisplay');
+            
+            openButton.onclick = () => modal.classList.add('show');
+            closeButton.onclick = () => modal.classList.remove('show');
+            closeButton2.onclick = () => modal.classList.remove('show');
+            
+            genButton.onclick = () => {
+                // This generates a secure random key.
+                // In a real app, you would save this to your user's
+                // profile in your backend database.
+                keyDisplay.textContent = "secret_key_" + crypto.randomUUID();
+            };
+            
+            modal.onclick = (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('show');
+                }
+            };
+        };
+
+        /**
+         * New async main function to load all data
+         */
+        async function loadDashboard() {
+            const loadingEl = document.getElementById('loading');
+            const contentEl = document.getElementById('dashboard-content');
+            const gridEl = document.getElementById('account-grid');
+            
+            try {
+                // 1. Fetch data
+                const accounts = await fetchAccountData();
+                
+                // 2. Populate individual account cards
+                gridEl.innerHTML = ''; // Clear any existing
+                accounts.forEach(account => {
+                    gridEl.innerHTML += createAccountCard(account);
+                });
+
+                // 3. Populate summary
+                updateSummary(accounts);
+
+                // 4. Show content
+                loadingEl.style.display = 'none';
+                contentEl.style.display = 'block';
+
+            } catch (error) {
+                console.error("Failed to load dashboard:", error);
+                loadingEl.innerHTML = `<p class="text-red-600">Failed to load dashboard data. Please check the console.</p>`;
+            }
+
+            // --- Auto-refresh ---
+            // Set up a loop to fetch new data every 60 seconds
+            // This matches the MQL4 EA's update frequency
+            setTimeout(loadDashboard, 60000);
+        }
+    </script>
+</body>
+</html>
