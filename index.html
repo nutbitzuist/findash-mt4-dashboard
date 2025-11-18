@@ -384,6 +384,11 @@
                 gridEl.innerHTML = ''; // Clear any existing
                 if (accounts.length === 0) {
                     gridEl.innerHTML = `<div class="col-span-full text-center text-gray-500 p-8 card">No account data received yet. Please configure your MT4 EA with the API Key and Server URL.</div>`;
+                    gridEl.innerHTML = `<div class="col-span-full text-center text-gray-500 p-8 card">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-2">Waiting for Data</h3>
+                        <p>No account data has been received yet.</p>
+                        <p class="mt-1">To connect an account, install the Expert Advisor on your MT4 terminal and enter the <strong class="text-gray-600">Server URL</strong> and <strong class="text-gray-600">API Key</strong> from the "Show API Key & URLs" button.</p>
+                    </div>`;
                 }
 
                 accounts.forEach(account => {

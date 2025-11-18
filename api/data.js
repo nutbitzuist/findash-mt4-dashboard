@@ -8,33 +8,30 @@
 
 import { kv } from '@vercel/kv';
 
-export default async function handler(request, response) {
+export default async function handler(req, res) {
     // 1. Only allow GET requests
-    if (request.method !== 'GET') {
-        return response.status(405).json({ error: 'Method Not Allowed' });
+    if (req.method !== 'GET') {
+        return res.status(405).json({ message: 'Method Not Allowed' });
     }
 
     // 2. SECURITY: In a real app, you would also secure this endpoint.
     // The easiest way is to use Vercel's "Password Protection" feature
     // for your entire project, which you can set in the Vercel Dashboard.
-
     try {
-        // 1. Scan for all keys that start with "account:"
-        const keys = await kv.keys('account:*');
+        // Fetch all account data from the 'accounts' hash in Vercel KV
+        const accounts = await kv.hgetall('accounts');
 
-        if (!keys || keys.length === 0) {
-            return response.status(200).json([]); // Return empty array if no accounts found
+        // If no accounts are found, return an empty array
+        if (!accounts) {
+            return res.status(200).json([]);
         }
 
-        // 2. Get the data for all keys
-        // kv.mget() (multi-get) is the fastest way to get all of them.
-        const accounts = await kv.mget(...keys);
-
-        // 3. Return the array of account data
-        return response.status(200).json(accounts);
+        // The data is stored as an object of objects, so we convert it to an array.
+        const dataArray = Object.values(accounts);
+        return res.status(200).json(dataArray);
 
     } catch (error) {
-        console.error("KV Read Error:", error);
-        return response.status(500).json({ error: 'Failed to retrieve data.' });
+        console.error('Error in /api/data:', error);
+        return res.status(500).json({ message: 'Internal Server Error' });
     }
 }
